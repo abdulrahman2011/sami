@@ -1,4 +1,3 @@
-
 import requests
 import time
 from datetime import datetime
@@ -25,7 +24,7 @@ def fetch_news():
     response = requests.get(url)
     return response.json().get('articles', [])
 
-# --- الحصول على سعر السهم (Yahoo Finance API مبسط) ---
+# --- الحصول على سعر السهم ---
 def get_stock_price(symbol):
     url = f'https://query1.finance.yahoo.com/v7/finance/quote?symbols={symbol}'
     try:
@@ -53,6 +52,7 @@ def check_and_alert():
                             send_telegram_message(msg)
                         break
 
-# --- تنفيذ مرة واحدة عند التشغيل ---
+# --- تنفيذ ---
 if __name__ == '__main__':
     check_and_alert()
+    send_telegram_message("🚨 تم إرسال هذه الرسالة كاختبار للتأكد من عمل البوت.")
