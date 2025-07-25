@@ -1,22 +1,24 @@
-import os
 import requests
 import time
 from datetime import datetime
+import os
 
-# --- تحميل القيم من Secrets ---
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
-NEWS_API_KEY = os.getenv("NEWS_API_KEY")
+# --- إعدادات البوت ---
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+CHAT_ID = os.getenv('CHAT_ID')
 
-# الكلمات المفتاحية
+# --- إعدادات Benzinga API ---
+NEWS_API_KEY = os.getenv('NEWS_API_KEY')
+
+# الكلمات المفتاحية مع التصنيف
 KEYWORDS_MAP = {
-    'patent': '📄 براءة اختراع',
+    'patent': '📝 براءة اختراع',
     'FDA': '💊 موافقة FDA',
     'acquisition': '🤝 استحواذ',
     'merger': '🔗 اندماج',
     'approval': '✅ موافقة رسمية',
-    'earnings': '💰 اعلان أرباح',
-    'earnings announcement': '💰 اعلان أرباح',
+    'earnings': '💰 إعلان أرباح',
+    'earnings announcement': '💰 إعلان أرباح',
     'quarter results': '📊 نتائج فصلية'
 }
 
@@ -38,35 +40,34 @@ def detect_news_type(title):
 
 # --- جلب الأخبار من Benzinga ---
 def fetch_news():
-    url = f'https://api.benzinga.com/api/v2/news?token={NEWS_API_KEY}&channels=stocks'
+    url = f'https://api.benzinga.com/api/v2/news?token={NEWS_API_KEY}&channels=stocks&pageSize=50'
     response = requests.get(url)
     if response.status_code != 200:
         return []
-
     news_list = response.json()
     filtered_news = []
-
+    
     for item in news_list:
         news_id = item.get("id")
         title = item.get("title", "")
         link = item.get("url", "")
         news_type = detect_news_type(title)
-
-        if news_id not in sent_news_ids:
+        
+        if news_id not in sent_news_ids and any(kw.lower() in title.lower() for kw in KEYWORDS_MAP.keys()):
             sent_news_ids.add(news_id)
-            message = f"{news_type} جديد: {title}\n{link}"
+            message = f"{news_type} جديد:\n{title}\n{link}"
             filtered_news.append(message)
-
+    
     return filtered_news
 
-# --- تشغيل البوت بشكل متكرر كل 10 ثواني ---
+# --- تشغيل البوت ---
 if name == "__main__":
-    print("🚀 البوت بدأ العمل، سيتم فحص الأخبار كل 10 ثواني...")
+    print("🚀 البوت يعمل الآن...")
     while True:
         news_items = fetch_news()
         if news_items:
             for news in news_items:
                 send_telegram_message(news)
         else:
-            print(f"⏳ لا توجد أخبار جديدة ({datetime.now().strftime('%H:%M:%S')})")
+            print("⏳ لا توجد أخبار جديدة...")
         time.sleep(10)  # فحص كل 10 ثواني
