@@ -70,4 +70,4 @@ if name == "__main__":
                 send_telegram_message(news)
         else:
             print("⏳ لا توجد أخبار جديدة...")
-        time.sleep(10)  # فحص كل 10 ثواني
+        time.sleep(60)  # فحص كل 10 ثواني
