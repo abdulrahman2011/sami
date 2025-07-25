@@ -3,16 +3,14 @@ import time
 from datetime import datetime
 import os
 
-# --- إعدادات البوت ---
+# --- إعدادات البوت من GitHub Secrets ---
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 CHAT_ID = os.getenv('CHAT_ID')
-
-# --- إعدادات Benzinga API ---
 NEWS_API_KEY = os.getenv('NEWS_API_KEY')
 
-# الكلمات المفتاحية مع التصنيف
+# --- الكلمات المفتاحية مع التصنيف ---
 KEYWORDS_MAP = {
-    'patent': '📝 براءة اختراع',
+    'patent': '📄 براءة اختراع',
     'FDA': '💊 موافقة FDA',
     'acquisition': '🤝 استحواذ',
     'merger': '🔗 اندماج',
@@ -22,7 +20,7 @@ KEYWORDS_MAP = {
     'quarter results': '📊 نتائج فصلية'
 }
 
-# تخزين الأخبار المرسلة لتجنب التكرار
+# --- تخزين الأخبار المرسلة لتجنب التكرار ---
 sent_news_ids = set()
 
 # --- إرسال رسالة إلى تيليجرام ---
@@ -40,34 +38,32 @@ def detect_news_type(title):
 
 # --- جلب الأخبار من Benzinga ---
 def fetch_news():
-    url = f'https://api.benzinga.com/api/v2/news?token={NEWS_API_KEY}&channels=stocks&pageSize=50'
+    url = f'https://api.benzinga.com/api/v2/news?token={NEWS_API_KEY}&channels=stocks'
     response = requests.get(url)
     if response.status_code != 200:
+        print(f"خطأ في جلب الأخبار: {response.status_code}")
         return []
-    news_list = response.json()
-    filtered_news = []
-    
-    for item in news_list:
-        news_id = item.get("id")
-        title = item.get("title", "")
-        link = item.get("url", "")
-        news_type = detect_news_type(title)
-        
-        if news_id not in sent_news_ids and any(kw.lower() in title.lower() for kw in KEYWORDS_MAP.keys()):
-            sent_news_ids.add(news_id)
-            message = f"{news_type} جديد:\n{title}\n{link}"
-            filtered_news.append(message)
-    
-    return filtered_news
+    return response.json()
 
-# --- تشغيل البوت ---
+# --- تنفيذ البوت ---
 if name == "__main__":
-    print("🚀 البوت يعمل الآن...")
+    print("🚀 بدء تشغيل البوت (يفحص الأخبار كل 10 ثوانٍ)...")
     while True:
-        news_items = fetch_news()
-        if news_items:
-            for news in news_items:
-                send_telegram_message(news)
-        else:
+        news_list = fetch_news()
+        filtered_news = []
+        for item in news_list:
+            news_id = item.get("id")
+            title = item.get("title", "")
+            link = item.get("url", "")
+            news_type = detect_news_type(title)
+
+            # إرسال الأخبار الجديدة فقط
+            if news_id not in sent_news_ids:
+                sent_news_ids.add(news_id)
+                message = f"{news_type}\n{title}\n{link}"
+                send_telegram_message(message)
+                filtered_news.append(message)
+
+        if not filtered_news:
             print("⏳ لا توجد أخبار جديدة...")
-        time.sleep(60)  # فحص كل 10 ثواني
+        time.sleep(10)  # الفحص كل 10 ثوانٍ
