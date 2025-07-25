@@ -6,53 +6,70 @@ from datetime import datetime
 BOT_TOKEN = '7205683778:AAHq8xTqtY_ksnbvGLsYBFrk9BainB0vy04'
 CHAT_ID = '665669452'
 
-# --- إعدادات مصادر الأخبار ---
-NEWS_API_KEY = 'e7f9a32bda6b452db0d514afaf3c5999'
-SEARCH_KEYWORDS = ['patent', 'FDA', 'acquisition', 'merger', 'approval', 'earnings']
-MIN_PRICE = 3
-MAX_PRICE = 20
+# --- إعدادات Benzinga API ---
+NEWS_API_KEY = 'bz.V4WKHAJD3AQYLDGQIBUI72PXOTTZCEG4'
 
-# --- إرسال رسالة إلى تليجرام ---
+# الكلمات المفتاحية مع التصنيف
+KEYWORDS_MAP = {
+    'patent': '📜 براءة اختراع',
+    'FDA': '💉 موافقة FDA',
+    'acquisition': '🤝 استحواذ',
+    'merger': '🔗 اندماج',
+    'approval': '✅ موافقة رسمية',
+    'earnings': '💰 إعلان أرباح',
+    'earnings announcement': '💰 إعلان أرباح',
+    'quarter results': '📊 نتائج فصلية'
+}
+
+# تخزين الأخبار المرسلة لتجنب التكرار
+sent_news_ids = set()
+
+# --- إرسال رسالة إلى تيليجرام ---
 def send_telegram_message(message):
     url = f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage'
     data = {'chat_id': CHAT_ID, 'text': message}
     requests.post(url, data=data)
 
-# --- الحصول على أخبار من NewsAPI ---
+# --- تحديد نوع الخبر ---
+def detect_news_type(title):
+    for keyword, label in KEYWORDS_MAP.items():
+        if keyword.lower() in title.lower():
+            return label
+    return '📰 خبر عام'
+
+# --- جلب الأخبار من Benzinga ---
 def fetch_news():
-    url = f'https://newsapi.org/v2/everything?q={" OR ".join(SEARCH_KEYWORDS)}&language=en&sortBy=publishedAt&pageSize=20&apiKey={NEWS_API_KEY}'
+    url = f'https://api.benzinga.com/api/v2/news?token={NEWS_API_KEY}&channels=stocks&pagesize=20'
     response = requests.get(url)
-    return response.json().get('articles', [])
+    if response.status_code != 200:
+        return []
 
-# --- الحصول على سعر السهم ---
-def get_stock_price(symbol):
-    url = f'https://query1.finance.yahoo.com/v7/finance/quote?symbols={symbol}'
-    try:
-        res = requests.get(url).json()
-        price = res['quoteResponse']['result'][0]['regularMarketPrice']
-        return price
-    except:
-        return None
+    news_list = response.json()
+    filtered_news = []
 
-# --- الفلترة والإرسال ---
-def check_and_alert():
-    articles = fetch_news()
-    for article in articles:
-        title = article['title']
-        url = article['url']
+    for item in news_list:
+        news_id = item.get("id")
+        title = item.get("title", "")
+        link = item.get("url", "")
+        news_type = detect_news_type(title)
 
-        for word in SEARCH_KEYWORDS:
-            if word.lower() in title.lower():
-                for word in title.split():
-                    if word.isupper() and 1 <= len(word) <= 5:
-                        symbol = word.strip('().,')
-                        price = get_stock_price(symbol)
-                        if price and MIN_PRICE <= price <= MAX_PRICE:
-                            msg = f'📢 خبر عن {symbol}:\n{title}\n💰 السعر: ${price}\n🔗 {url}'
-                            send_telegram_message(msg)
-                        break
+        # إرسال الأخبار المصنفة إذا لم ترسل سابقًا
+        if news_id not in sent_news_ids and any(kw.lower() in title.lower() for kw in KEYWORDS_MAP.keys()):
+            sent_news_ids.add(news_id)
+            message = f"🔥 جديد: {news_type}\n{title}\n{link}"
+            filtered_news.append(message)
 
-# --- تنفيذ ---
-if __name__ == '__main__':
-    check_and_alert()
-    send_telegram_message("🚨 تم إرسال هذه الرسالة كاختبار للتأكد من عمل البوت.")
+    return filtered_news
+
+# --- تشغيل البوت ---
+if name == "__main__":
+    print("✅ البوت شغال ويجلب الأخبار من Benzinga كل 10 ثواني...")
+    while True:
+        news_items = fetch_news()
+        if news_items:
+            for news in news_items:
+                send_telegram_message(news)
+                time.sleep(2)  # فاصل بين الرسائل
+        else:
+            print("🔍 لا توجد أخبار جوهرية الآن.")
+        time.sleep(10)  # فحص الأخبار كل 10 ثواني
