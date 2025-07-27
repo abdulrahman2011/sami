@@ -1,8 +1,9 @@
+
 name: Stock Alert Bot
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/1 * * * *'   # تشغيل كل دقيقة
   workflow_dispatch:
 
 jobs:
