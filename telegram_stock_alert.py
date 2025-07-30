@@ -51,8 +51,8 @@ def fetch_news():
     return response.json()
 
 # --- تشغيل البوت ---
-    if __name__ == "__main__":
-    send_telegram_message("✅ اختبار: البوت يعمل الآن!")  # رسالة اختبار
+if __name__ == "__main__":
+    send_telegram_message("✅ البوت يعمل الآن :")
 
     print("🚀 بدء تشغيل البوت (يفحص الأخبار كل 10 ثوانٍ)...")
     while True:
@@ -72,4 +72,4 @@ def fetch_news():
                 send_telegram_message(message)
                 filtered_news.append(message)
 
-        time.sleep(10)  # الفحص كل 10 ثواني
+        time.sleep(10)
